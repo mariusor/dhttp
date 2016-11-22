@@ -1,0 +1,9 @@
+{
+	"name": "dhttp",
+	"authors": [
+		"habarnam"
+	],
+	"description": "Naive approach to a http server",
+	"copyright": "Copyright © 2016, habarnam",
+	"license": "MIT"
+}
