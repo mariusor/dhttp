@@ -7,6 +7,7 @@ import std.conv;
 import std.experimental.logger;
 import std.algorithm : remove;
 import std.algorithm.comparison : equal;
+import core.time;
 
 
 void HTTPListen(Server s)
@@ -20,6 +21,7 @@ class Server
 {
     enum MAX_CONNECTIONS = 60;
     enum MAX_BUF_SIZE = 4194304;
+    enum MAX_NSECS = 10000;
 
     short sock_number = 1;
 
@@ -49,20 +51,27 @@ class Server
         } catch (SocketOSException e) {
            errorf("Unable to listen on %s: %s", ipv4.toString(), e.msg);
         }
-        listener.listen(10);
+        listener.listen(1);
 
         socket_set = new SocketSet(socket_count + 1);
     }
 
     char[] drain_socket (Socket socket) 
     {
+        auto before = MonoTime.currTime;
+
         enum BUFF_SIZE = 1024;
         char[] full_buffer;
         while (true) {
+            auto after = MonoTime.currTime;
             char[BUFF_SIZE] buffer;
 
+            if (ticksToNSecs(after.ticks - before.ticks) > MAX_NSECS) return full_buffer;
             auto received = socket.receive(buffer);
             if (received > 0) {
+                if (full_buffer.length == 0) {
+                    if (!Parser.validHTTP(buffer[0..received])) return full_buffer;
+                }
                 full_buffer ~= buffer[0..received];
                 tracef("Received %d bytes", received);
             }

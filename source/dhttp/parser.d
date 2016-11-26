@@ -41,6 +41,7 @@ class Parser
 
         static string split = "\r\n\r\n";
 
+
         static void parse(Request req, char[] raw_request) 
         {
             if (raw_request.length == 0) {
@@ -139,4 +140,55 @@ class Parser
     }
 
     
+    static bool validHTTP(char[] buff) 
+    {
+        ushort last_pos = 0;
+        switch (buff[0]) {
+            case 'G':
+                // possible get
+                if (buff[0..4] == "GET ") {
+                    last_pos = 4;
+                    break;
+                }
+                return false;
+            case 'H':
+                if (buff[0..5] == "HEAD ") {
+                    last_pos = 5;
+                    break;
+                }
+                return false;
+            case 'P':
+                if (buff[0..5] == "POST ") {
+                    last_pos = 5;
+                    break;
+                }
+                if (buff[0..4] == "PUT ") {
+                    last_pos = 4;
+                    break;
+                }
+                return false;
+            case 'D':
+                if (buff[0..7] == "DELETE ") {
+                    last_pos = 7;
+                    break;
+                }
+                return false;
+            default:
+                return false;
+        }
+
+        if (buff[last_pos] != '/') return false;
+        for (ushort i = last_pos; i++; i < buff.length) {
+            if (buff[i] == ' ') {
+                last_pos = i;
+                last_pos++;
+                break;
+            }
+        }
+        char[8] ver = buff[last_pos..last_pos+8]; 
+        if (ver != "HTTP/1.0" && ver != "HTTP/1.1" && ver != "HTTP/2.0") {
+            return false;
+        }
+        return true;
+    }
 }
