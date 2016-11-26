@@ -5,5 +5,8 @@
 	],
 	"description": "Naive approach to a http server",
 	"copyright": "Copyright © 2016, habarnam",
-	"license": "MIT"
+	"license": "MIT",
+	"dflags" : [
+		"-version=StdLoggerDisableTrace"
+	]
 }
