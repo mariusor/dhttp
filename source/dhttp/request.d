@@ -3,6 +3,53 @@ module dhttp.request;
 import std.string;
 import std.conv;
 
+enum HTTPVersion {
+	HTTP_1_0,
+	HTTP_1_1,
+	HTTP_2_0
+}
+
+enum HTTPMethod {
+	// HTTP standard, RFC 2616
+	GET,
+	HEAD,
+	PUT,
+	POST,
+	PATCH,
+	DELETE,
+	OPTIONS,
+	TRACE,
+	CONNECT,
+
+	// WEBDAV extensions, RFC 2518
+	PROPFIND,
+	PROPPATCH,
+	MKCOL,
+	COPY,
+	MOVE,
+	LOCK,
+	UNLOCK,
+
+	// Versioning Extensions to WebDAV, RFC 3253
+	VERSIONCONTROL,
+	REPORT,
+	CHECKOUT,
+	CHECKIN,
+	UNCHECKOUT,
+	MKWORKSPACE,
+	UPDATE,
+	LABEL,
+	MERGE,
+	BASELINECONTROL,
+	MKACTIVITY,
+
+	// Ordered Collections Protocol, RFC 3648
+	ORDERPATCH,
+
+	// Access Control Protocol, RFC 3744
+	ACL
+}
+
 class Header 
 {
     string name;
@@ -16,25 +63,11 @@ class Header
 
 class Request
 {
-    const ushort HTTP_1_0 = 100;
-    const ushort HTTP_1_1 = 110;
-    const ushort HTTP_2_0 = 200;
-
-    enum Type {
-        GET,
-        POST,
-        HEAD,
-        PUT,
-        DELETE,
-        PATCH
-    };
-
-    string protocol = "HTTP";
     string path;
     Header[] headers;
     ubyte[] req_body;
     ushort http_version = 0;
-    Type method;
+    HTTPMethod method;
 
     bool isEmpty()
     {
@@ -43,28 +76,10 @@ class Request
 
     override string toString() 
     {
-        if (isEmpty()) {
-            return "NULL REQ"; 
-        }
+        if (isEmpty()) return "empty req";
 
-        auto version_label = http_version == HTTP_1_1 ? "1.1" : "1.0";
-        auto method_label = "GET";
-
-        if (method == Type.POST) method_label = "POST";
-        if (method == Type.HEAD) method_label = "HEAD";
-        if (method == Type.PUT) method_label = "PUT"; 
-        if (method == Type.DELETE) method_label = "DELETE";
-        if (method == Type.PATCH) method_label = "PATCH";
-
-//        auto header_string = "";
-//        if (headers.length > 0) {
-//            header_string ~= "\n";
-//            for (int i = 0; i < headers.length; i++) {
-//                header_string ~= headers[i].toString() ~ "\n";
-//            }
-//        }
-
-        return (protocol ~ "/" ~ version_label ~ " " ~ method_label ~ " " ~ path);
+        auto version_label = http_version == HTTPVersion.HTTP_1_1 ? "1.1" : "1.0";
+        return ("HTTP/" ~ version_label ~ " " ~ to!string(method) ~ " " ~ path);
     }
 
 }
