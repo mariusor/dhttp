@@ -2,11 +2,19 @@ module dhttp.server;
 
 import dhttp.parser;
 import dhttp.request;
-import std.socket : InternetAddress, Socket, SocketException, SocketSet, TcpSocket, SocketOptionLevel, SocketOption, SocketShutdown;
+import std.socket : InternetAddress, Internet6Address, Socket,SocketOSException, SocketException, SocketSet, TcpSocket, SocketOptionLevel, SocketOption, SocketShutdown;
+import std.conv;
 import std.experimental.logger;
 import std.algorithm : remove;
 import std.algorithm.comparison : equal;
 
+
+void HTTPListen(Server s)
+{
+    while(true) {
+        s.listen();
+    }
+}
 
 class Server
 {
@@ -28,16 +36,20 @@ class Server
         listener.setOption(SocketOptionLevel.SOCKET, SocketOption.REUSEADDR, true);
 
         auto ipv4 = new InternetAddress("127.0.0.1", port);
-        //auto ipv6 = new Internet6Address("::1", port);
-        listener.bind(ipv4);
+        auto ipv6 = new Internet6Address("::1", port);
+        try {
+            listener.bind(ipv6);
+            logf("Listening on %s", ipv6.toString());
+        } catch (SocketOSException e) {
+           errorf("Unable to listen on %s: %s", ipv6.toString(), e.msg);
+        }
+        try {
+            listener.bind(ipv4);
+            infof("Listening on %s", ipv4.toString());
+        } catch (SocketOSException e) {
+           errorf("Unable to listen on %s: %s", ipv4.toString(), e.msg);
+        }
         listener.listen(10);
-        logf("Listening on %s", ipv4.toString());
-        //try {
-        //    listener.bind(ipv6);
-        //    logf("Listening on %s", ipv6.toString());
-        //} catch (SocketOSException e) {
-        //   errorf("Unable to listen on %s", ipv6.toString()); 
-        //}
 
         socket_set = new SocketSet(socket_count + 1);
     }
@@ -58,9 +70,9 @@ class Server
                 // client closed connection or read less than buffer size
                 try {
                     // if the connection closed due to an error, remoteAddress() could fail
-                    infof("Connection from %s closed.", socket.remoteAddress().toString());
+                    tracef("Connection from %s closed.", socket.remoteAddress().toString());
                 } catch (SocketException) {
-                    infof("Connection closed.");
+                    tracef("Connection closed.");
                 }
                 break;
             }
@@ -85,32 +97,32 @@ class Server
             if (socket_set.isSet(pool[i])) {
                 char[] buffer = drain_socket(pool[i]);
 
-                infof("Received %d bytes from %s", buffer.length, pool[i].remoteAddress().toString());
+                tracef("Received %d bytes from %s", buffer.length, pool[i].remoteAddress().toString());
                 Request request = Parser.parse(buffer);
-                logf("%s", request);
-                // logf("%s", request.headers);
 
-                enum header = "HTTP/1.0 200 OK\nContent-Type: text/plain; charset=utf-8\n\n";
-
-                string response = header ~ "Hello World!\n";
+                infof("%s", request);
+                string response;
+                if (!request.isEmpty()) {
+                    enum header = "HTTP/1.0 200 OK\nServer: dhttp/v0.0.1\nContent-Type: text/html; charset=utf-8\n\n";
+                    response = header ~ "<!DOCTYPE html><html><head><title>Hello dhttp</title></head><body><span><h1>Hello </h1><span>dhttp!</span></span></body></html>\n";
+                } else {
+                    enum header = "HTTP/1.0 400 Bad Request\nServer: dhttp/v0.0.1\nContent-Type: text/html; charset=utf-8\n\n";
+                    response = header ~ "<!DOCTYPE html><html><head><title>Bad request</title></head><body><span><h1>400 Bad request</h1></body></html>\n";
+                }
 
                 pool[i].send(response);
                 pool[i].shutdown(SocketShutdown.BOTH);
                 pool[i].close();
                 pool = pool.remove(i);
-                infof("Connections %d", pool.length);
+                tracef("Connections %d", pool.length);
             }
-
         }
-
 
         if (socket_set.isSet(listener)) {
             Socket sn = null;
             scope (failure) {
                 error("Error reading socket");
-
-                if (sn)
-                    sn.close();
+                if (sn) sn.close();
             }
 
             sn = listener.accept();
@@ -118,9 +130,9 @@ class Server
             assert(listener.isAlive);
 
             if (pool.length < MAX_CONNECTIONS) {
-                infof("Connection from %s established.", sn.remoteAddress().toString());
+                tracef("Connection from %s established.", sn.remoteAddress().toString());
                 pool ~= sn;
-                infof("Connections %d", pool.length);
+                tracef("Connections %d", pool.length);
             } else {
                 warningf("Rejected connection from %s; too many connections", sn.remoteAddress().toString());
                 sn.close();
