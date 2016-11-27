@@ -3,10 +3,29 @@ module dhttp.request;
 import std.string;
 import std.conv;
 
-enum HTTPVersion {
-	HTTP_1_0,
-	HTTP_1_1,
-	HTTP_2_0
+unittest {
+
+    assert(to!string(HTTPVersion.HTTP_1_0) == "HTTP_1_0");
+    assert(to!string(HTTPVersion.HTTP_1_1) == "HTTP_1_1");
+    assert(to!string(HTTPVersion.HTTP_2_0) == "HTTP_2_0");
+}
+
+enum HTTPVersion : ushort {
+	HTTP_1_0 = 100,
+	HTTP_1_1 = 110,
+	HTTP_2_0 = 200
+}
+
+unittest {
+    assert(to!string(HTTPMethod.GET) == "GET");
+    assert(to!string(HTTPMethod.HEAD) == "HEAD");
+    assert(to!string(HTTPMethod.PUT) == "PUT");
+    assert(to!string(HTTPMethod.POST) == "POST");
+    assert(to!string(HTTPMethod.PATCH) == "PATCH");
+    assert(to!string(HTTPMethod.DELETE) == "DELETE");
+    assert(to!string(HTTPMethod.OPTIONS) == "OPTIONS");
+    assert(to!string(HTTPMethod.TRACE) == "TRACE");
+    assert(to!string(HTTPMethod.CONNECT) == "CONNECT");
 }
 
 enum HTTPMethod {
@@ -50,6 +69,14 @@ enum HTTPMethod {
 	ACL
 }
 
+unittest {
+    string buff = "Host: example.com";
+    Header h = new Header;
+    h.name = "Host";
+    h.value = "example.com";
+    assert (h.toString() == buff);
+}
+
 class Header 
 {
     string name;
@@ -61,17 +88,39 @@ class Header
     }
 }
 
+unittest {
+    Header h = new Header;
+    h.name = "Host";
+    h.value = "example.com";
+
+    Request r = new Request;
+
+    r.path = "/";
+    r.headers ~= h;
+
+    r.http_version = HTTPVersion.HTTP_1_1;
+    r.method = HTTPMethod.PUT;
+
+    assert (r.path == "/");
+    assert (r.headers.length == 1);
+    assert (r.headers[0].name == "Host");
+    assert (r.headers[0].value == "example.com");
+    assert (r.http_version == HTTPVersion.HTTP_1_1);
+    assert (r.req_body.length == 0);
+    assert (r.req_body == "");
+}
+
 class Request
 {
     string path;
     Header[] headers;
     ubyte[] req_body;
-    ushort http_version = 0;
+    HTTPVersion http_version;
     HTTPMethod method;
 
     bool isEmpty()
     {
-        return (http_version == 0);
+        return (path.length == 0);
     }
 
     override string toString() 
